@@ -1,0 +1,199 @@
+﻿<html>
+<head>
+<script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.12.4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r79/three.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.1/dat.gui.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stats.js/r16/Stats.min.js"></script>
+<script src="http://cdn.rawgit.com/mrdoob/three.js/master/examples/js/controls/OrbitControls.js"></script>
+</head> 
+<body style="overflow:hidden; margin:0">
+	<!-- Div which will hold the Output -->
+	<img id="doska"  src="doska.jpg"/>
+	<div id="Stats-output">
+	</div>
+	<div id="WebGL-output">
+	</div>
+ 
+ 
+<script>
+
+var mirrorSphere, mirrorSphereCamera; // for mirror material
+var renderer;
+var scene;
+var camera;
+var controls;
+var stats = new Stats();
+
+init();
+animate();
+
+function init() {
+		// create a scene, that will hold all our elements such as objects, cameras and lights.
+	scene = new THREE.Scene();
+
+	// create a camera, which defines where we're looking at.
+	camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+	// create a render and set the size
+	renderer = new THREE.WebGLRenderer();
+
+	//задний фон
+	renderer.setClearColor(new THREE.Color(0xEEEEEE));
+	renderer.setSize(window.innerWidth, window.innerHeight);
+	
+	//разрешить тени
+	renderer.shadowMap.enabled = true;
+	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+	
+//	var floorTexture = new THREE.ImageUtils.loadTexture('http://megakolyan.ru/libs/img/140177799.jpg')
+//	floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
+//		floorTexture.repeat.set( 10, 10 );
+//цилиндер
+	var floorGeometry = new THREE.CylinderGeometry(10,10,0.5,32,1, false);
+	var floorMaterial = new THREE.MeshPhongMaterial(
+	{color: 0xffffff, side:THREE.DoubleSide, map: THREE.ImageUtils.loadTexture("doska.jpg")}
+	);
+	var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+	floor.position.y = -0.5;
+//	floor.rotation.x = 3 * Math.PI / 2;
+	floor.receiveShadow = true;
+	scene.add(floor);
+	
+	//cycle
+	var radius = 10;
+	var num = 50;
+	var angle = 0;
+	var r = 1;
+	for(var i = 0; i < 360; i++){
+		var rotateAngle = angle;
+		var x = (radius + Math.cos(rotateAngle) * r) * Math.cos(2 * Math.PI * i / num);
+		var y = (radius + Math.cos(rotateAngle) * r) * Math.sin(2 * Math.PI * i / num);
+		var z = r * Math.sin(rotateAngle) + 3;
+		
+		//create red sphere
+		var sphereGeometryTmp = new THREE.SphereGeometry(0.6,10,10);
+		var sphereMaterialTmp = new THREE.MeshLambertMaterial({color: 0xff0000});
+		var sphereTmp = new THREE.Mesh(sphereGeometryTmp,sphereMaterialTmp);
+
+		// position the sphere
+		sphereTmp.position.set(x, z, y);
+		sphereTmp.castShadow=true;
+
+		// add the sphere to the scene
+		scene.add(sphereTmp);
+		
+		rotateAngle = (rotateAngle + 2* Math.PI/3);
+		
+		x = (radius + Math.cos(rotateAngle) * r) * Math.cos(2 * Math.PI * i / num);
+		y = (radius + Math.cos(rotateAngle) * r) * Math.sin(2 * Math.PI * i / num);
+		z = r * Math.sin(rotateAngle) + 3;
+		
+		// create a green cube
+		var cubeGeometry = new THREE.BoxGeometry(0.7,0.7,0.7);
+		var cubeMaterial = new THREE.MeshLambertMaterial({color: 0x00ff00});
+		var cubeTmp = new THREE.Mesh(cubeGeometry, cubeMaterial);
+		cubeTmp.castShadow = true;
+
+		// position the cube
+		cubeTmp.position.set(x, z, y);
+		cubeTmp.castShadow=true;
+
+		// add the cube to the scene
+		scene.add(cubeTmp);
+		
+		rotateAngle = (rotateAngle + 2* Math.PI/3);
+		
+		x = (radius + Math.cos(rotateAngle) * r) * Math.cos(2 * Math.PI * i / num);
+		y = (radius + Math.cos(rotateAngle) * r) * Math.sin(2 * Math.PI * i / num);
+		z = r * Math.sin(rotateAngle) + 3;
+		
+		// create a yellow cube
+		var cubeGeometry = new THREE.CylinderGeometry(0, 0.5, 1, 10, 1, true);
+		var cubeMaterial = new THREE.MeshLambertMaterial({color: 0xffff00});
+		var cubeTmp = new THREE.Mesh(cubeGeometry, cubeMaterial);
+		cubeTmp.castShadow = true;
+
+		// position the cube
+		cubeTmp.position.set(x, z, y);
+		cubeTmp.castShadow=true;
+
+		// add the cube to the scene
+		scene.add(cubeTmp);
+
+
+		
+		angle = (angle + 2 * 5 *Math.PI / num) % (2 * Math.PI);
+	}
+
+	mirrorSphereCamera = new THREE.CubeCamera( 0.1, 5000, 512 );
+//		mirrorSphereCamera.renderTarget.texture.minFilter = THREE.LinearMipMapLinearFilter;
+	scene.add( mirrorSphereCamera );
+	var mirrorSphereMaterial = new THREE.MeshPhongMaterial( 
+	{ 	envMap: mirrorSphereCamera.renderTarget, 
+		color: 0x0055aa,
+		reflectivity: 0.8,
+		emissive: 0xffffff,
+		emissiveIntensity: 0.5
+//		combine: THREE.MixOperation,
+//		emissive: 0xaaaaaa,
+//		shininess: 100,
+//		refractionRatio: 0.8
+} );
+
+	var sphereGeometry = new THREE.SphereGeometry(4,20,20);
+	mirrorSphere= new THREE.Mesh(sphereGeometry,mirrorSphereMaterial);
+
+	// position the sphere
+	mirrorSphere.position.set(0, 4, 0);
+    mirrorSphere.castShadow=true;
+
+	// add the sphere to the scene
+	scene.add(mirrorSphere);
+
+	// position and point the camera to the center of the scene
+	camera.position.set(-30, 20, 30);
+	camera.lookAt(scene.position);
+
+	// add spotlight for the shadows
+	  var spotLight = new THREE.SpotLight( 0xffffff );
+	spotLight.position.set( -40, 60, -10 );
+	spotLight.castShadow = true;
+	scene.add( spotLight ); 
+	
+	var light = new THREE.AmbientLight( 0x404040 ); // soft white light
+	light.position.set(-30, 30, 30);
+	scene.add( light );	
+
+	// add the output of the renderer to the html element
+	document.getElementById("WebGL-output").appendChild(renderer.domElement);
+	
+	// call the render function
+	var step=0;
+	
+	controls = new THREE.OrbitControls( camera ); 
+	
+	
+//	render();
+	
+};
+	
+	
+function animate() 
+{
+	requestAnimationFrame( animate );
+	controls.update();
+    stats.update();
+	render();	
+}
+
+function render() 
+{
+	mirrorSphere.visible = false;
+	mirrorSphereCamera.updateCubeMap( renderer, scene );
+	mirrorSphere.visible = true;
+	
+	renderer.render( scene, camera );
+}
+</script>
+</body>
+</html>
